@@ -74,3 +74,4 @@ export const bmpHeaderConstants = {
   PIXEL_OFFSET,
   BYTES_PER_PIXEL,
 };
+

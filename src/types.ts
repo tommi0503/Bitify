@@ -7,7 +7,6 @@ export interface PixelBuffer {
 export interface ConversionOptions {
   alphaThreshold: number;
   recoveryStrength: number;
-  preserveSize: true;
 }
 
 export interface ConvertedAsset {
@@ -25,6 +24,7 @@ export interface FileJob {
   id: string;
   file: File;
   status: "queued" | "processing" | "ready" | "error";
+  completedOptionsKey?: string;
   result?: ConvertedAsset;
   error?: string;
 }

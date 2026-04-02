@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { correctEdgeColors, amplifyAlpha, processPixelBuffer, smartBinarizeAlpha, thresholdAlpha } from "./imagePipeline";
+import { correctEdgeColors, processPixelBuffer, smartBinarizeAlpha } from "./imagePipeline";
 import type { PixelBuffer } from "../types";
 
 function makeBuffer(width: number, height: number, values: number[]): PixelBuffer {
@@ -11,27 +11,11 @@ function makeBuffer(width: number, height: number, values: number[]): PixelBuffe
 }
 
 describe("image pipeline", () => {
-  it("amplifies low alpha values with the stacking formula", () => {
-    const source = makeBuffer(1, 1, [10, 20, 30, 64]);
-    const next = amplifyAlpha(source, 8);
-
-    expect(next.data[3]).toBeGreaterThan(source.data[3]);
-    expect(next.data[3]).toBe(230);
-  });
-
-  it("thresholds every pixel to binary alpha", () => {
-    const source = makeBuffer(2, 1, [1, 2, 3, 127, 4, 5, 6, 128]);
-    const next = thresholdAlpha(source, 128);
-
-    expect(Array.from(next.data)).toEqual([1, 2, 3, 0, 4, 5, 6, 255]);
-  });
-
   it("keeps medium-alpha border pixels by lowering the seed threshold", () => {
     const source = makeBuffer(2, 1, [120, 120, 120, 96, 120, 120, 120, 50]);
     const next = smartBinarizeAlpha(source, {
       alphaThreshold: 128,
       recoveryStrength: 8,
-      preserveSize: true,
     });
 
     expect(next.data[3]).toBe(255);
@@ -40,15 +24,14 @@ describe("image pipeline", () => {
 
   it("recovers bridge pixels without turning one-sided halo into opaque pixels", () => {
     const source = makeBuffer(3, 3, [
-      0, 0, 0, 200,   120, 120, 120, 80,  0, 0, 0, 0,
-      120, 120, 120, 80,  120, 120, 120, 90,  120, 120, 120, 80,
-      0, 0, 0, 0,  120, 120, 120, 80,  0, 0, 0, 200,
+      0, 0, 0, 200, 120, 120, 120, 80, 0, 0, 0, 0,
+      120, 120, 120, 80, 120, 120, 120, 90, 120, 120, 120, 80,
+      0, 0, 0, 0, 120, 120, 120, 80, 0, 0, 0, 200,
     ]);
 
     const next = smartBinarizeAlpha(source, {
       alphaThreshold: 128,
       recoveryStrength: 8,
-      preserveSize: true,
     });
 
     expect(next.data[3]).toBe(255);
@@ -85,7 +68,6 @@ describe("image pipeline", () => {
     const next = processPixelBuffer(source, {
       alphaThreshold: 128,
       recoveryStrength: 8,
-      preserveSize: true,
     });
 
     const alphas = [next.data[3], next.data[7], next.data[11], next.data[15]];

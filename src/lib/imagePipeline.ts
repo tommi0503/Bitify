@@ -25,7 +25,6 @@ interface RgbColor {
 export const defaultOptions: ConversionOptions = {
   alphaThreshold: 128,
   recoveryStrength: 8,
-  preserveSize: true,
 };
 
 function clonePixelBuffer(buffer: PixelBuffer): PixelBuffer {
@@ -200,31 +199,6 @@ function findBestOpaqueColor(
   return bestColor;
 }
 
-export function amplifyAlpha(buffer: PixelBuffer, strength: number): PixelBuffer {
-  const next = clonePixelBuffer(buffer);
-
-  for (let index = 0; index < next.data.length; index += 4) {
-    const normalized = next.data[index + 3] / 255;
-    const amplified = 1 - (1 - normalized) ** strength;
-    next.data[index + 3] = Math.max(0, Math.min(255, Math.round(amplified * 255)));
-  }
-
-  return next;
-}
-
-export function thresholdAlpha(
-  buffer: PixelBuffer,
-  alphaThreshold: number,
-): PixelBuffer {
-  const next = clonePixelBuffer(buffer);
-
-  for (let index = 0; index < next.data.length; index += 4) {
-    next.data[index + 3] = next.data[index + 3] >= alphaThreshold ? 255 : 0;
-  }
-
-  return next;
-}
-
 export function smartBinarizeAlpha(
   source: PixelBuffer,
   options: ConversionOptions,
@@ -257,7 +231,8 @@ export function smartBinarizeAlpha(
 
         const sourceColor = readRgb(source, offset);
         const similarNeighbors = countSimilarOpaqueNeighbors(source, snapshot, x, y, sourceColor);
-        const shouldRecover = hasBridgeSupport(source, snapshot, x, y, sourceColor) ||
+        const shouldRecover =
+          hasBridgeSupport(source, snapshot, x, y, sourceColor) ||
           (sourceAlpha >= supportFloor && similarNeighbors >= 3);
 
         if (shouldRecover) {
@@ -338,14 +313,7 @@ export function correctEdgeColors(
         continue;
       }
 
-      const replacement = findBestOpaqueColor(
-        source,
-        x,
-        y,
-        alphaThreshold,
-        sourceColor,
-      );
-
+      const replacement = findBestOpaqueColor(source, x, y, alphaThreshold, sourceColor);
       writeRgb(next.data, offset, replacement ?? sourceColor);
     }
   }
@@ -418,10 +386,10 @@ export async function convertPngFile(
   file: File,
   options: ConversionOptions,
 ): Promise<ConvertedAsset> {
-  const originalPreviewUrl = URL.createObjectURL(file);
   const source = await decodeFileToPixelBuffer(file);
   const processed = processPixelBuffer(source, options);
   const bmpBlob = encodeBmpBinaryAlpha(processed);
+  const originalPreviewUrl = URL.createObjectURL(file);
 
   return {
     sourceFile: file,

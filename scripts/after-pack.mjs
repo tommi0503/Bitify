@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
+
+const require = createRequire(import.meta.url);
 
 export default async function afterPack(context) {
   if (context.electronPlatformName !== "win32") {
@@ -11,7 +14,8 @@ export default async function afterPack(context) {
   const exeName = `${context.packager.appInfo.productFilename}.exe`;
   const exePath = path.join(context.appOutDir, exeName);
   const iconPath = path.join(projectDir, "build", "icon.ico");
-  const rceditPath = path.join(projectDir, "node_modules", "electron-winstaller", "vendor", "rcedit.exe");
+  const electronWinstallerPath = require.resolve("electron-winstaller/package.json");
+  const rceditPath = path.join(path.dirname(electronWinstallerPath), "vendor", "rcedit.exe");
 
   if (!existsSync(exePath)) {
     throw new Error(`Packed executable not found: ${exePath}`);

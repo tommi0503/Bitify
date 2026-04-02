@@ -24,6 +24,10 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getOptionsKey(options: ConversionOptions): string {
+  return `${options.alphaThreshold}:${options.recoveryStrength}`;
+}
+
 function getPreviewSize(width?: number, height?: number): { width: number; height: number } | null {
   if (!width || !height) {
     return null;
@@ -142,10 +146,14 @@ export default function App() {
 
   jobsRef.current = jobs;
 
-  const readyJobs = jobs.filter((job) => job.status === "ready" && job.result);
+  const optionsKey = getOptionsKey(options);
+  const readyJobs = jobs.filter(
+    (job): job is FileJob & { result: ConvertedAsset } =>
+      job.status === "ready" && job.completedOptionsKey === optionsKey && Boolean(job.result),
+  );
   const errorCount = jobs.filter((job) => job.status === "error").length;
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? jobs[0];
-  const fileSignature = jobs.map((job) => job.id).join("|");
+  const processingJob = jobs.find((job) => job.status === "processing") ?? null;
 
   useEffect(() => {
     return () => {
@@ -158,57 +166,89 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (jobs.length === 0) {
+    setJobs((currentJobs) => {
+      let changed = false;
+      const nextJobs = currentJobs.map((job) => {
+        if (job.completedOptionsKey === optionsKey || job.status === "queued") {
+          return job;
+        }
+
+        changed = true;
+        return { ...job, status: "queued" as const, error: undefined };
+      });
+
+      return changed ? nextJobs : currentJobs;
+    });
+  }, [optionsKey]);
+
+  useEffect(() => {
+    if (processingJob) {
+      return;
+    }
+
+    const nextJob = jobs.find((job) => job.status === "queued");
+    if (!nextJob) {
+      return;
+    }
+
+    setJobs((currentJobs) =>
+      currentJobs.map((job) =>
+        job.id === nextJob.id ? { ...job, status: "processing", error: undefined } : job,
+      ),
+    );
+  }, [jobs, processingJob]);
+
+  useEffect(() => {
+    if (!processingJob) {
       return;
     }
 
     let cancelled = false;
-    const sourceJobs = jobs.map((job) => ({ id: job.id, file: job.file }));
-    const targetIds = new Set(sourceJobs.map((job) => job.id));
-
-    setJobs((currentJobs) =>
-      currentJobs.map((job) =>
-        targetIds.has(job.id)
-          ? { ...job, status: "processing", error: undefined, result: job.result }
-          : job,
-      ),
-    );
+    const currentOptions = { ...options };
+    const currentOptionsKey = optionsKey;
+    const { file, id } = processingJob;
 
     const run = async () => {
-      for (const sourceJob of sourceJobs) {
-        try {
-          const result = await convertPngFile(sourceJob.file, options);
+      try {
+        const result = await convertPngFile(file, currentOptions);
 
-          if (cancelled) {
-            revokeConvertedAsset(result);
-            return;
-          }
-
-          setJobs((currentJobs) =>
-            currentJobs.map((entry) => {
-              if (entry.id !== sourceJob.id) {
-                return entry;
-              }
-
-              if (entry.result) {
-                revokeConvertedAsset(entry.result);
-              }
-
-              return { ...entry, status: "ready", error: undefined, result };
-            }),
-          );
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "An error occurred while converting the file.";
-
-          setJobs((currentJobs) =>
-            currentJobs.map((entry) =>
-              entry.id === sourceJob.id
-                ? { ...entry, status: "error", error: message, result: undefined }
-                : entry,
-            ),
-          );
+        if (cancelled) {
+          revokeConvertedAsset(result);
+          return;
         }
+
+        setJobs((currentJobs) =>
+          currentJobs.map((entry) => {
+            if (entry.id !== id) {
+              return entry;
+            }
+
+            if (entry.result) {
+              revokeConvertedAsset(entry.result);
+            }
+
+            return {
+              ...entry,
+              status: "ready",
+              error: undefined,
+              result,
+              completedOptionsKey: currentOptionsKey,
+            };
+          }),
+        );
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message =
+          error instanceof Error ? error.message : "An error occurred while converting the file.";
+
+        setJobs((currentJobs) =>
+          currentJobs.map((entry) =>
+            entry.id === id ? { ...entry, status: "error", error: message } : entry,
+          ),
+        );
       }
     };
 
@@ -217,7 +257,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [fileSignature, options.alphaThreshold, options.recoveryStrength]);
+  }, [options.alphaThreshold, options.recoveryStrength, optionsKey, processingJob?.id]);
 
   function enqueueFiles(list: FileList | File[]) {
     const files = Array.from(list).filter(
@@ -232,6 +272,7 @@ export default function App() {
       id: makeJobId(file),
       file,
       status: "queued",
+      completedOptionsKey: undefined,
     }));
 
     setJobs((currentJobs) => {
@@ -280,9 +321,7 @@ export default function App() {
   }
 
   async function downloadAll() {
-    const assets = readyJobs
-      .map((job) => job.result)
-      .filter((result): result is ConvertedAsset => Boolean(result));
+    const assets = readyJobs.map((job) => job.result);
 
     if (assets.length === 0) return;
 
@@ -430,7 +469,7 @@ export default function App() {
                     <button
                       type="button"
                       className="border border-blue-600 px-3 py-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-300"
-                      disabled={!job.result}
+                      disabled={!job.result || job.completedOptionsKey !== optionsKey}
                       onClick={() => job.result && downloadBlob(job.result.bmpBlob, job.result.outputFileName)}
                     >
                       Save BMP
@@ -491,6 +530,4 @@ export default function App() {
     </main>
   );
 }
-
-
 

@@ -25,7 +25,6 @@ function createMainWindow() {
     autoHideMenuBar: true,
     icon: getWindowIconPath(),
     webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
