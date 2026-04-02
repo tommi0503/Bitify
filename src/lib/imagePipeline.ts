@@ -1,11 +1,11 @@
-﻿import { encodeBmpBinaryAlpha } from "./bmpEncoder";
+import { encodeBmpBinaryAlpha } from "./bmpEncoder";
 import type { ConversionOptions, ConvertedAsset, PixelBuffer } from "../types";
 
 const OPAQUE_SEARCH_RADIUS = 2;
 const TRANSPARENT_FILL_RADIUS = 3;
 const COLOR_SIMILARITY_MAX_DISTANCE = 12288;
 const MIN_CANDIDATE_ALPHA = 24;
-const PROMOTION_THRESHOLD_STEP = 5;
+const RECOVERY_THRESHOLD_STEP = 5;
 const BRIDGE_CANDIDATE_MARGIN = 18;
 const BRIDGE_PASSES = 2;
 
@@ -24,7 +24,7 @@ interface RgbColor {
 
 export const defaultOptions: ConversionOptions = {
   alphaThreshold: 128,
-  hardeningStrength: 8,
+  recoveryStrength: 8,
   preserveSize: true,
 };
 
@@ -89,7 +89,7 @@ function isOpaqueAt(maskAlpha: Uint8ClampedArray, width: number, x: number, y: n
 function getSeedThreshold(options: ConversionOptions): number {
   return Math.max(
     MIN_CANDIDATE_ALPHA,
-    options.alphaThreshold - options.hardeningStrength * PROMOTION_THRESHOLD_STEP,
+    options.alphaThreshold - options.recoveryStrength * RECOVERY_THRESHOLD_STEP,
   );
 }
 
@@ -200,13 +200,13 @@ function findBestOpaqueColor(
   return bestColor;
 }
 
-export function hardenAlpha(buffer: PixelBuffer, strength: number): PixelBuffer {
+export function amplifyAlpha(buffer: PixelBuffer, strength: number): PixelBuffer {
   const next = clonePixelBuffer(buffer);
 
   for (let index = 0; index < next.data.length; index += 4) {
     const normalized = next.data[index + 3] / 255;
-    const hardened = 1 - (1 - normalized) ** strength;
-    next.data[index + 3] = Math.max(0, Math.min(255, Math.round(hardened * 255)));
+    const amplified = 1 - (1 - normalized) ** strength;
+    next.data[index + 3] = Math.max(0, Math.min(255, Math.round(amplified * 255)));
   }
 
   return next;
@@ -257,10 +257,10 @@ export function smartBinarizeAlpha(
 
         const sourceColor = readRgb(source, offset);
         const similarNeighbors = countSimilarOpaqueNeighbors(source, snapshot, x, y, sourceColor);
-        const shouldPromote = hasBridgeSupport(source, snapshot, x, y, sourceColor) ||
+        const shouldRecover = hasBridgeSupport(source, snapshot, x, y, sourceColor) ||
           (sourceAlpha >= supportFloor && similarNeighbors >= 3);
 
-        if (shouldPromote) {
+        if (shouldRecover) {
           next.data[offset + 3] = 255;
           changed = true;
         }

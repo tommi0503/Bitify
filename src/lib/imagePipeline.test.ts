@@ -1,5 +1,5 @@
-﻿import { describe, expect, it } from "vitest";
-import { correctEdgeColors, hardenAlpha, processPixelBuffer, smartBinarizeAlpha, thresholdAlpha } from "./imagePipeline";
+import { describe, expect, it } from "vitest";
+import { correctEdgeColors, amplifyAlpha, processPixelBuffer, smartBinarizeAlpha, thresholdAlpha } from "./imagePipeline";
 import type { PixelBuffer } from "../types";
 
 function makeBuffer(width: number, height: number, values: number[]): PixelBuffer {
@@ -11,9 +11,9 @@ function makeBuffer(width: number, height: number, values: number[]): PixelBuffe
 }
 
 describe("image pipeline", () => {
-  it("hardens low alpha values with the stacking formula", () => {
+  it("amplifies low alpha values with the stacking formula", () => {
     const source = makeBuffer(1, 1, [10, 20, 30, 64]);
-    const next = hardenAlpha(source, 8);
+    const next = amplifyAlpha(source, 8);
 
     expect(next.data[3]).toBeGreaterThan(source.data[3]);
     expect(next.data[3]).toBe(230);
@@ -30,7 +30,7 @@ describe("image pipeline", () => {
     const source = makeBuffer(2, 1, [120, 120, 120, 96, 120, 120, 120, 50]);
     const next = smartBinarizeAlpha(source, {
       alphaThreshold: 128,
-      hardeningStrength: 8,
+      recoveryStrength: 8,
       preserveSize: true,
     });
 
@@ -38,7 +38,7 @@ describe("image pipeline", () => {
     expect(next.data[7]).toBe(0);
   });
 
-  it("promotes bridge pixels without turning one-sided halo into opaque pixels", () => {
+  it("recovers bridge pixels without turning one-sided halo into opaque pixels", () => {
     const source = makeBuffer(3, 3, [
       0, 0, 0, 200,   120, 120, 120, 80,  0, 0, 0, 0,
       120, 120, 120, 80,  120, 120, 120, 90,  120, 120, 120, 80,
@@ -47,7 +47,7 @@ describe("image pipeline", () => {
 
     const next = smartBinarizeAlpha(source, {
       alphaThreshold: 128,
-      hardeningStrength: 8,
+      recoveryStrength: 8,
       preserveSize: true,
     });
 
@@ -67,7 +67,7 @@ describe("image pipeline", () => {
     expect(Array.from(next.data.slice(4, 8))).toEqual([128, 128, 128, 255]);
   });
 
-  it("chooses the closest similar source color for promoted semi-transparent pixels", () => {
+  it("chooses the closest similar source color for recovered semi-transparent pixels", () => {
     const original = makeBuffer(3, 1, [0, 120, 255, 255, 140, 140, 140, 100, 128, 128, 128, 255]);
     const thresholded = makeBuffer(3, 1, [0, 120, 255, 255, 140, 140, 140, 255, 128, 128, 128, 255]);
     const next = correctEdgeColors(original, thresholded, 128);
@@ -84,7 +84,7 @@ describe("image pipeline", () => {
     ]);
     const next = processPixelBuffer(source, {
       alphaThreshold: 128,
-      hardeningStrength: 8,
+      recoveryStrength: 8,
       preserveSize: true,
     });
 

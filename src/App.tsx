@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import JSZip from "jszip";
 import { convertPngFile, defaultOptions, revokeConvertedAsset } from "./lib/imagePipeline";
@@ -217,7 +217,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [fileSignature, options.alphaThreshold, options.hardeningStrength]);
+  }, [fileSignature, options.alphaThreshold, options.recoveryStrength]);
 
   function enqueueFiles(list: FileList | File[]) {
     const files = Array.from(list).filter(
@@ -366,13 +366,13 @@ export default function App() {
               />
               <div className="border-t border-slate-200">
                 <Slider
-                  label="Promotion Strength"
+                  label="Recovery Strength"
                   min={1}
                   max={20}
                   step={1}
-                  value={options.hardeningStrength}
-                  onChange={(hardeningStrength) =>
-                    setOptions((current) => ({ ...current, hardeningStrength }))
+                  value={options.recoveryStrength}
+                  onChange={(recoveryStrength) =>
+                    setOptions((current) => ({ ...current, recoveryStrength }))
                   }
                 />
               </div>

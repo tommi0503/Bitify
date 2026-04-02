@@ -1,4 +1,4 @@
-﻿export interface PixelBuffer {
+export interface PixelBuffer {
   width: number;
   height: number;
   data: Uint8ClampedArray;
@@ -6,7 +6,7 @@
 
 export interface ConversionOptions {
   alphaThreshold: number;
-  hardeningStrength: number;
+  recoveryStrength: number;
   preserveSize: true;
 }
 

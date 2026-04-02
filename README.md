@@ -6,7 +6,7 @@
 
 Bitify is not a generic BMP converter. It is a reconstruction tool for tiny PNG assets that must survive in BMP pipelines where transparency is effectively binary and semi-transparent edge pixels cause blur, fringe, or broken borders.
 
-A normal converter only changes the file container. Bitify rebuilds the image for restricted BMP consumers by analyzing antialiased PNG edges, promoting structure that would otherwise disappear, correcting edge colors, and exporting a BMP whose alpha is strictly `0` or `255`.
+A normal converter only changes the file container. Bitify rebuilds the image for restricted BMP consumers by analyzing antialiased PNG edges, recovering structure that would otherwise disappear, correcting edge colors, and exporting a BMP whose alpha is strictly `0` or `255`.
 
 ## Why It Exists
 
@@ -36,9 +36,9 @@ Bitify runs a small reconstruction pipeline in the browser before encoding BMP o
 
 ### 1. Smart alpha seeding
 
-The pipeline does not start from a hard `128` cutoff alone. It lowers the initial seed threshold based on the hardening strength so medium-alpha pixels can still participate when they are likely part of a real border or stroke.
+The pipeline does not start from a hard `128` cutoff alone. It lowers the initial seed threshold based on the recovery strength so medium-alpha pixels can still participate when they are likely part of a real border or stroke.
 
-### 2. Bridge-aware promotion
+### 2. Bridge-aware recovery
 
 After seeding, Bitify looks for candidate pixels that connect two opaque regions across horizontal, vertical, or diagonal directions. This helps recover thin borders, corners, and diagonal links that a naive threshold would erase.
 
@@ -54,7 +54,7 @@ The final export uses a `32-bit BMP V5` layout with BGRA channels, but the alpha
 
 - Batch PNG upload with drag and drop
 - Live original vs processed preview
-- Adjustable alpha threshold and hardening strength
+- Adjustable alpha threshold and recovery strength
 - Individual BMP download
 - ZIP export with individual BMP files and a horizontal tile sheet BMP
 - Fully local processing in the browser
