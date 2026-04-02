@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "description": "A local PNG to BMP converter for binary-alpha workflows.",
   "type": "module",
+  "main": "electron/main.mjs",
   "license": "ISC",
+  "author": "tommi0503",
   "repository": {
     "type": "git",
     "url": "https://github.com/tommi0503/Bitify.git"
@@ -14,8 +16,15 @@
     "url": "https://github.com/tommi0503/Bitify/issues"
   },
   "scripts": {
+    "sync:icons": "node scripts/sync-icons.mjs",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev:web": "vite",
+    "dev:desktop": "npm run sync:icons && wait-on tcp:127.0.0.1:5173 && electron .",
+    "dev:electron": "concurrently -k \"npm:dev:web\" \"npm:dev:desktop\"",
+    "build": "npm run build:web",
+    "build:web": "npm run sync:icons && tsc -b && vite build",
+    "build:electron": "npm run build:web && electron-builder --dir",
+    "dist:portable": "npm run build:web && electron-builder --win portable",
     "preview": "vite preview",
     "test": "vitest run"
   },
@@ -29,9 +38,45 @@
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1",
+    "png-to-ico": "^2.1.8",
     "tailwindcss": "^4.1.5",
     "typescript": "^5.8.3",
     "vite": "^7.0.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.tommi0503.bitify",
+    "productName": "Bitify",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "afterPack": "scripts/after-pack.mjs",
+    "artifactName": "${productName}-${version}-portable.${ext}",
+    "extraMetadata": {
+      "main": "electron/main.mjs"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    }
   }
 }

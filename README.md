@@ -58,6 +58,7 @@ The final export uses a `32-bit BMP V5` layout with BGRA channels, but the alpha
 - Individual BMP download
 - ZIP export with individual BMP files and a horizontal tile sheet BMP
 - Fully local processing in the browser
+- Optional Electron wrapper for portable Windows packaging
 
 ## When To Use It
 
@@ -77,8 +78,31 @@ It is not meant to replace a general-purpose image converter for photos or large
 - Tailwind CSS
 - TypeScript
 - Canvas-based pixel processing
+- Electron for desktop packaging
+- electron-builder for Windows portable output
+
+## Desktop App
+
+Bitify can also be packaged as a portable Windows `.exe`, so end users do not need to install Node.js.
+
+Run the desktop shell in development:
+
+```bash
+npm install
+npm run dev:electron
+```
+
+Build a portable executable:
+
+```bash
+npm run dist:portable
+```
+
+The packaged app is written to `release/`.
 
 ## Getting Started
+
+Run the browser version locally:
 
 ```bash
 npm install
@@ -91,7 +115,10 @@ Open the local Vite URL in your browser, add PNG files, tune the conversion slid
 
 ```bash
 npm run dev
+npm run dev:electron
 npm run build
+npm run build:electron
+npm run dist:portable
 npm run test
 npm run preview
 ```
