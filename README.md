@@ -1,6 +1,8 @@
-﻿# Bitify
+# Bitify
 
-![Bitify preview](./bitify_show_image.png)
+<p align="center">
+  <img src="./bitify_show_image.png" alt="Bitify preview" width="1040">
+</p>
 
 Bitify is a local web utility for converting PNG icons into BMP files for binary-alpha workflows. It is designed for assets that break when semi-transparent edge pixels are preserved and need to be rebuilt into clean on/off transparency.
 
